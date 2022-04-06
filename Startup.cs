@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Application.Configuration;
 using Application.Repositories;
 using Application.Services;
 using Microsoft.AspNetCore.Builder;
@@ -13,6 +14,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Serializers;
+using MongoDB.Driver;
 
 namespace Application
 {
@@ -29,8 +34,20 @@ namespace Application
         public void ConfigureServices(IServiceCollection services)
         {
 
-            services.AddSingleton<IItemsRepository , InMemItemsRepository>();
-            services.AddSingleton<IItemsService , ItemsService>();
+            // services.AddSingleton<IItemsRepository, InMemItemsRepository>();
+            services.AddSingleton<IItemsRepository, MongoDbItemRepository>();
+            services.AddSingleton<IItemsService, ItemsService>();
+            BsonSerializer.RegisterSerializer(new GuidSerializer(BsonType.String));
+            BsonSerializer.RegisterSerializer(new DateTimeOffsetSerializer(BsonType.String));
+
+            services.AddSingleton<IMongoClient>(serviceProvider =>
+            {
+                var settings =
+                    Configuration.GetSection(nameof(MongoDbSettings)).Get<MongoDbSettings>();
+                return new MongoClient(settings.ConnectionString);
+
+            });
+
 
             services.AddControllers();
             services.AddSwaggerGen(c =>
